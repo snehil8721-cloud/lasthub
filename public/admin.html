@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>StreamHub Admin</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0f0f0f;color:#fff;font-family:Arial,Helvetica,sans-serif}
+.top{position:sticky;top:0;z-index:5;background:#111;border-bottom:1px solid #252525;padding:12px 4%;display:flex;gap:14px;align-items:center}
+.logo{font-size:22px;font-weight:700}.logo b{color:#ff1744}.grow{flex:1}
+.btn{background:#272727;color:#fff;border:0;border-radius:20px;padding:9px 15px;cursor:pointer;text-decoration:none;font-size:14px}
+.wrap{max-width:900px;margin:auto;padding:22px 4%}
+.box{background:#181818;border:1px solid #333;border-radius:14px;max-width:380px;margin:12vh auto 0;padding:24px}
+.field{width:100%;padding:12px;background:#222;border:1px solid #444;border-radius:8px;color:#fff;margin:10px 0}
+.submit{background:#ff1744;color:#fff;border:0;border-radius:8px;padding:12px 18px;font-weight:700;cursor:pointer;width:100%}
+.err{color:#ff8a8a;font-size:14px;min-height:18px;margin:6px 0 0}
+.item{display:grid;grid-template-columns:130px minmax(0,1fr) auto;gap:14px;align-items:center;background:#181818;border:1px solid #2a2a2a;border-radius:10px;padding:10px;margin-bottom:12px}
+.item.gone{opacity:.45}
+.thumb{aspect-ratio:16/9;background:#222;border-radius:7px;overflow:hidden}.thumb img{width:100%;height:100%;object-fit:cover}
+.t{font-weight:600;margin:0 0 5px;overflow-wrap:anywhere}.m{color:#aaa;font-size:13px;margin:0}
+.del{background:#ff1744;color:#fff;border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer}
+.res{background:#2e7d32;color:#fff;border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer}
+.del:disabled,.res:disabled{opacity:.5}
+.empty{text-align:center;color:#aaa;padding:50px}
+[hidden]{display:none!important}
+@media(max-width:600px){.item{grid-template-columns:100px minmax(0,1fr);}.item button{grid-column:1/-1;width:100%}}
+</style></head>
+<body>
+<header class="top"><div class="logo">Stream<b>Hub</b> Admin</div><div class="grow"></div><a class="btn" href="/">← Site</a><button id="logout" class="btn" hidden>Logout</button></header>
+
+<div id="login" class="box">
+  <h2 style="margin-top:0">Admin login</h2>
+  <input id="pw" class="field" type="password" placeholder="Password" autocomplete="current-password" autofocus>
+  <button id="go" class="submit">Login</button>
+  <p id="loginErr" class="err"></p>
+</div>
+
+<main id="panel" class="wrap" hidden>
+  <p id="count" style="color:#aaa;margin-top:0"></p>
+  <div id="list"></div>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+let pw=sessionStorage.getItem('adminPw')||'';
+const esc=(s='')=>String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const api=(url,opt={})=>fetch(url,{...opt,headers:{'x-admin-password':pw,...(opt.headers||{})}});
+
+async function login(){
+  pw=$('pw').value||pw;$('loginErr').textContent='';
+  try{
+    const r=await api('/api/admin/login',{method:'POST'});
+    const x=await r.json();
+    if(!r.ok)throw new Error(x.error||'Login failed');
+    sessionStorage.setItem('adminPw',pw);
+    $('login').hidden=true;$('panel').hidden=false;$('logout').hidden=false;
+    await refresh();
+  }catch(e){pw='';sessionStorage.removeItem('adminPw');$('loginErr').textContent=e.message}
+}
+async function refresh(){
+  const r=await api('/api/admin/videos');
+  if(r.status===401){logout();return}
+  const list=await r.json();
+  const visible=list.filter(v=>!v.hidden).length;
+  $('count').textContent=`${visible} video${visible===1?'':'s'} live on the site`;
+  $('list').innerHTML=list.length?list.map(v=>`<div class="item ${v.hidden?'gone':''}">
+    <div class="thumb"><img src="${esc(v.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none'"></div>
+    <div><p class="t">${esc(v.title)}</p><p class="m">${esc(v.description)} · ${v.views} views${v.legacy?' · Drive video':''}${v.hidden?' · <b>DELETED</b>':''}</p></div>
+    ${v.hidden?`<button class="res" data-act="restore" data-id="${esc(v.id)}">Restore</button>`:`<button class="del" data-act="delete" data-id="${esc(v.id)}" data-title="${esc(v.title)}">Delete</button>`}
+  </div>`).join(''):'<div class="empty">No videos.</div>';
+}
+$('list').onclick=async e=>{
+  const b=e.target.closest('button');if(!b)return;
+  const id=b.dataset.id;
+  if(b.dataset.act==='delete'&&!confirm(`Delete "${b.dataset.title}"? This cannot be undone.`))return;
+  b.disabled=true;
+  try{
+    const r=b.dataset.act==='delete'
+      ?await api('/api/admin/videos/'+encodeURIComponent(id),{method:'DELETE'})
+      :await api('/api/admin/videos/'+encodeURIComponent(id)+'/restore',{method:'POST'});
+    const x=await r.json();if(!r.ok)throw new Error(x.error||'Failed');
+    await refresh();
+  }catch(err){alert(err.message);b.disabled=false}
+};
+function logout(){pw='';sessionStorage.removeItem('adminPw');$('panel').hidden=true;$('logout').hidden=true;$('login').hidden=false;$('pw').value=''}
+$('go').onclick=login;$('pw').onkeydown=e=>{if(e.key==='Enter')login()};$('logout').onclick=logout;
+if(pw)login();
+</script>
+</body></html>
