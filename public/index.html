@@ -24,10 +24,49 @@
 .watch-dialog .player{width:100%;height:auto;aspect-ratio:16/9;background:#000;border-radius:9px;object-fit:contain}
 body:has(#watchView:not([hidden])){overflow:hidden}
 @media(max-width:760px){.watch-view{padding:12px}.watch-dialog{width:min(100%,calc((100dvh - 170px)*16/9));padding:14px;border-radius:12px;max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px)}.watch-dialog .player{width:100%;height:auto;aspect-ratio:16/9;border-radius:7px}.watch-title{font-size:18px}.watch-description{font-size:14px}}
+
+/* ---- Player: popup effect, mobile layout, custom controls ---- */
+.watch-view{overscroll-behavior:contain}
+.watch-backdrop{animation:fadeIn .25s ease both;backdrop-filter:blur(4px)}
+.watch-dialog{width:min(960px,100%);max-height:calc(100dvh - 24px);overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.watch-view:not([hidden]) .watch-dialog{animation:popIn .32s cubic-bezier(.2,.9,.3,1.15) both}
+.watch-view.closing .watch-backdrop{animation:fadeOut .19s ease forwards}
+.watch-view.closing .watch-dialog{animation:popOut .19s ease forwards}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeOut{to{opacity:0}}
+@keyframes popIn{from{opacity:0;transform:scale(.82) translateY(30px)}to{opacity:1;transform:none}}
+@keyframes popOut{to{opacity:0;transform:scale(.9) translateY(16px)}}
+.stage{position:relative;width:100%;aspect-ratio:16/9;max-height:calc(100dvh - 300px);min-height:180px;background:#000;border-radius:9px;overflow:hidden}
+.stage .player,.stage .drive-preview{position:absolute;inset:0;width:100%;height:100%;aspect-ratio:auto;max-height:none;border-radius:0;object-fit:contain;background:#000}
+.stage .player{touch-action:manipulation}
+.ctrl{position:absolute;left:0;right:0;bottom:0;padding:22px 10px 8px;background:linear-gradient(transparent,rgba(0,0,0,.85));transition:opacity .25s}
+.watch-dialog.drive-preview-active .ctrl{display:none}
+.stage.idle .ctrl{opacity:0;pointer-events:none}
+.seek{display:block;width:100%;height:22px;margin:0 0 4px;accent-color:#ff1744;background:transparent;cursor:pointer;touch-action:none}
+.ctrl-row{display:flex;align-items:center;gap:6px;flex-wrap:nowrap}
+.cb{min-width:44px;height:40px;padding:0 10px;border:0;border-radius:20px;background:#ffffff26;color:#fff;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent}
+.cb:hover,.cb:active{background:#ffffff4d}
+.cb.big{background:#ff1744;font-size:17px;min-width:48px}
+.tm{font-size:12px;color:#ddd;white-space:nowrap;margin-left:4px}
+.sp{flex:1}
+.stage:fullscreen{max-height:none;border-radius:0;width:100%;height:100%;aspect-ratio:auto}
+.stage:-webkit-full-screen{max-height:none;border-radius:0;width:100%;height:100%}
+.watch-dialog .back-btn{margin:0 52px 12px 0}
+.watch-title{overflow-wrap:anywhere}
+@media(max-width:760px){
+ .watch-view{padding:8px;align-items:center}
+ .watch-dialog{width:100%;padding:12px;max-height:calc(100dvh - 16px)}
+ .stage{max-height:calc(100dvh - 260px);min-height:160px}
+ .ctrl{padding:16px 6px 6px}
+ .ctrl-row{gap:4px}.cb{min-width:40px;height:38px;padding:0 8px;font-size:13px}.cb.big{min-width:44px}
+ .tm{font-size:11px;margin-left:2px}
+}
+@media(max-width:380px){.tm{display:none}}
+@media(max-height:480px) and (orientation:landscape){.stage{max-height:calc(100dvh - 110px)}.watch-dialog .back-btn,.watch-title,.watch-meta,.watch-description{display:none}}
 </style></head>
 <body>
 <header class="top"><div class="logo">Stream<b>Hub</b></div><input id="search" class="search" placeholder="Search videos..."><button class="upload" onclick="openUpload()">＋ Upload</button></header>
-<main class="wrap"><div id="chips" class="chips"><button class="chip" onclick="filterAll()">All</button><button class="chip">Latest</button><button class="chip">Popular</button></div><section id="feed" class="feed"></section><section id="watchView" class="watch-view" hidden><div class="watch-backdrop" onclick="closePlayer()"></div><div class="watch-dialog" role="dialog" aria-modal="true" aria-labelledby="playerTitle"><button class="watch-close" aria-label="Close video" onclick="closePlayer()">×</button><button class="back-btn" onclick="closePlayer()">← Back to videos</button><video id="player" class="player" controls controlsList="nodownload noremoteplayback" disablePictureInPicture playsinline preload="metadata"></video><iframe id="drivePreview" class="drive-preview" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen title="Google Drive video preview"></iframe><p id="playerError" class="player-error"></p><h1 id="playerTitle" class="watch-title"></h1><p id="playerMeta" class="watch-meta"></p><p id="playerDescription" class="watch-description"></p></div></section></main>
+<main class="wrap"><div id="chips" class="chips"><button class="chip" onclick="filterAll()">All</button><button class="chip">Latest</button><button class="chip">Popular</button></div><section id="feed" class="feed"></section><section id="watchView" class="watch-view" hidden><div class="watch-backdrop" onclick="closePlayer()"></div><div class="watch-dialog" role="dialog" aria-modal="true" aria-labelledby="playerTitle"><button class="watch-close" aria-label="Close video" onclick="closePlayer()">×</button><button class="back-btn" onclick="closePlayer()">← Back to videos</button><div id="stage" class="stage"><video id="player" class="player" controlsList="nodownload noremoteplayback" disablePictureInPicture playsinline webkit-playsinline preload="metadata"></video><iframe id="drivePreview" class="drive-preview" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen title="Google Drive video preview"></iframe><div id="ctrl" class="ctrl"><input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek"><div class="ctrl-row"><button type="button" id="bBack" class="cb" aria-label="Back 10 seconds">⟲ 10</button><button type="button" id="bPlay" class="cb big" aria-label="Play or pause">▶</button><button type="button" id="bFwd" class="cb" aria-label="Forward 10 seconds">10 ⟳</button><span id="tm" class="tm">0:00 / 0:00</span><span class="sp"></span><button type="button" id="bMute" class="cb" aria-label="Mute or unmute">🔊</button><button type="button" id="bFs" class="cb" aria-label="Fullscreen">⛶</button></div></div></div><p id="playerError" class="player-error"></p><h1 id="playerTitle" class="watch-title"></h1><p id="playerMeta" class="watch-meta"></p><p id="playerDescription" class="watch-description"></p></div></section></main>
 <div id="uploadModal" class="modal"><div class="box"><button class="close" onclick="closeUpload()">×</button><h2>Upload video</h2><p class="note">Your video will be uploaded to cloud storage. Please keep the page open until it finishes.</p><form id="uploadForm"><input class="field" name="title" placeholder="Video title" required><input class="field" name="description" placeholder="Short description"><input class="field" name="video" type="file" accept="video/*" required><input class="field" id="uploadPw" type="password" placeholder="Upload password (if set)" autocomplete="off"><button class="submit">Upload</button></form><p id="uploadStatus" class="note"></p></div></div>
 <script>
 let videos=[];const feed=document.getElementById('feed');
@@ -43,10 +82,10 @@ function metaText(v){return`${v.description||'StreamHub'} · ${v.legacy?'Existin
 function render(list){feed.innerHTML=list.length?list.map((v,i)=>`<article class="card" data-video-id="${esc(v.id||'')}" onclick="play(${i})"><div class="thumb"><img src="${esc(v.thumbnail||'')}" alt="${esc(v.title)}" loading="lazy" onerror="this.style.display='none'"><div class="play">▶</div></div><div class="title">${esc(v.title)}</div><p class="meta">${esc(metaText(v))}</p></article>`).join(''):'<div class="empty">No videos found.</div>';window.current=list}
 function playVideoById(id){const i=videos.findIndex(v=>v.id===id);if(i>=0)play(i,videos)}
 let playbackDiagnostic=false;
-function useLegacyPreview(video,error,message){if(!video.legacy||!video.url)return false;const dialog=document.querySelector('.watch-dialog');const preview=document.getElementById('drivePreview');dialog.classList.add('drive-preview-active');preview.title=`${video.title} — Google Drive preview`;preview.src=video.url;error.textContent=message;error.style.display='block';return true}
+function useLegacyPreview(video,error,message){if(!video.legacy||!video.url)return false;const dialog=document.querySelector('.watch-dialog');const preview=document.getElementById('drivePreview');dialog.classList.add('drive-preview-active');preview.title=`${video.title} — Google Drive preview`;preview.src=video.url;if(message){error.textContent=message;error.style.display='block'}else{error.style.display='none'}return true}
 async function explainPlaybackError(player,error,streamUrl,video){if(playbackDiagnostic)return;playbackDiagnostic=true;let message='Could not play this video. Check the server and Google Drive authorization.';try{if(location.protocol==='file:')throw new Error('Open StreamHub through its server URL, not as a local file, so video streaming can work.');const response=await fetch(streamUrl,{headers:{Range:'bytes=0-1'}});if(!response.ok){let detail='';if(response.headers.get('content-type')?.includes('application/json')){const body=await response.json();detail=body.error||''}message=detail||`The video server returned HTTP ${response.status}.`;if(useLegacyPreview(video,error,`${message} Opening the original Google Drive link.`))return;message+=` Restart StreamHub and try again.`}else{await response.body?.cancel();message=player.error?.code===4?'The video reached the server, but this browser cannot play its video format.':'The video stream could not be played. Check the Google Drive file and its format.'}}catch(e){message=e.message||message;console.error('Could not diagnose video playback',e);if(useLegacyPreview(video,error,'Stream unavailable. Opening the original Google Drive link.'))return}error.textContent=message;error.style.display='block'}
-async function play(i,list=window.current){const v=list[i];if(!v)return;const player=document.getElementById('player');const error=document.getElementById('playerError');const dialog=document.querySelector('.watch-dialog');const preview=document.getElementById('drivePreview');const streamUrl=v.src||`/api/videos/${encodeURIComponent(v.id)}/stream`;playbackDiagnostic=false;dialog.classList.remove('drive-preview-active');preview.removeAttribute('src');document.getElementById('watchView').hidden=false;document.getElementById('playerTitle').textContent=v.title;document.getElementById('playerMeta').textContent=metaText(v);document.getElementById('playerDescription').textContent=v.description||'';error.style.display='none';player.onerror=()=>{explainPlaybackError(player,error,streamUrl,v)};player.src=streamUrl;player.load();player.play().catch(e=>{if(e.name==='NotAllowedError'){error.textContent='Tap the play button to start the video.';error.style.display='block'}else if(e.name!=='AbortError')explainPlaybackError(player,error,streamUrl,v)});try{const r=await fetch(`/api/videos/${encodeURIComponent(v.id)}/view`,{method:'POST'});const x=await r.json();if(!r.ok)throw new Error(x.error||'Could not record view');v.views=x.views;v.viewCountAvailable=true;document.getElementById('playerMeta').textContent=metaText(v);const card=Array.from(document.querySelectorAll('.card')).find(el=>el.dataset.videoId===v.id);const meta=card?.querySelector('.meta');if(meta)meta.textContent=metaText(v)}catch(e){v.viewCountAvailable=false;document.getElementById('playerMeta').textContent=metaText(v);console.error('Could not record video view',e)}}
-function closePlayer(){const player=document.getElementById('player');player.pause();player.removeAttribute('src');player.load();document.getElementById('drivePreview').removeAttribute('src');document.querySelector('.watch-dialog').classList.remove('drive-preview-active');document.getElementById('watchView').hidden=true}
+let closeTimer;async function play(i,list=window.current){const v=list[i];if(!v)return;clearTimeout(closeTimer);document.getElementById('watchView').classList.remove('closing');const player=document.getElementById('player');const error=document.getElementById('playerError');const dialog=document.querySelector('.watch-dialog');const preview=document.getElementById('drivePreview');const streamUrl=v.src||`/api/videos/${encodeURIComponent(v.id)}/stream`;playbackDiagnostic=false;dialog.classList.remove('drive-preview-active');preview.removeAttribute('src');document.getElementById('watchView').hidden=false;document.getElementById('playerTitle').textContent=v.title;document.getElementById('playerMeta').textContent=metaText(v);document.getElementById('playerDescription').textContent=v.description||'';error.style.display='none';player.onerror=()=>{explainPlaybackError(player,error,streamUrl,v)};if(v.legacy&&v.url){useLegacyPreview(v,error,'')}else{player.src=streamUrl;player.load();player.play().catch(e=>{if(e.name==='NotAllowedError'){error.textContent='Tap the play button to start the video.';error.style.display='block'}else if(e.name!=='AbortError')explainPlaybackError(player,error,streamUrl,v)})}try{const r=await fetch(`/api/videos/${encodeURIComponent(v.id)}/view`,{method:'POST'});const x=await r.json();if(!r.ok)throw new Error(x.error||'Could not record view');v.views=x.views;v.viewCountAvailable=true;document.getElementById('playerMeta').textContent=metaText(v);const card=Array.from(document.querySelectorAll('.card')).find(el=>el.dataset.videoId===v.id);const meta=card?.querySelector('.meta');if(meta)meta.textContent=metaText(v)}catch(e){v.viewCountAvailable=false;document.getElementById('playerMeta').textContent=metaText(v);console.error('Could not record video view',e)}}
+function closePlayer(){const w=document.getElementById('watchView');if(w.hidden||w.classList.contains('closing'))return;const player=document.getElementById('player');player.pause();player.removeAttribute('src');player.load();document.getElementById('drivePreview').removeAttribute('src');if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});w.classList.add('closing');closeTimer=setTimeout(()=>{document.querySelector('.watch-dialog').classList.remove('drive-preview-active');w.classList.remove('closing');w.hidden=true},190)}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!document.getElementById('watchView').hidden)closePlayer()});
 function openUpload(){document.getElementById('uploadModal').style.display='flex'}function closeUpload(){document.getElementById('uploadModal').style.display='none'}
 function filterAll(){render(videos)}function esc(s=''){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
@@ -59,4 +98,28 @@ await new Promise((ok,fail)=>{const x=new XMLHttpRequest();x.open('POST',`https:
 s.textContent='Saving...';const r=await fetch('/api/videos',{method:'POST',headers:hdr,body:JSON.stringify({public_id:sig.public_id,title:form.title.value,description:form.description.value})});const out=await r.json();if(!r.ok)throw new Error(out.error||'Could not save video');
 s.textContent='Uploaded successfully!';form.reset();await load();setTimeout(closeUpload,800)}catch(err){s.textContent=err.message||'Upload failed'}};
 load();
-</script></body></html>
+</script>
+<script>
+(function(){
+const $=id=>document.getElementById(id),p=$('player'),seek=$('seek'),stage=$('stage');
+const fmt=s=>{if(!isFinite(s)||s<0)s=0;s=Math.floor(s);const m=Math.floor(s/60),x=s%60,h=Math.floor(m/60);return h?`${h}:${String(m%60).padStart(2,'0')}:${String(x).padStart(2,'0')}`:`${m}:${String(x).padStart(2,'0')}`};
+let dragging=false,idleT;
+function ui(){const d=p.duration||0,t=p.currentTime||0;if(!dragging){seek.value=d?Math.round(t/d*1000):0}seek.style.background=`linear-gradient(to right,#ff1744 ${seek.value/10}%,#555 ${seek.value/10}%) center/100% 4px no-repeat`;$('tm').textContent=`${fmt(t)} / ${fmt(d)}`;$('bPlay').textContent=p.paused?'▶':'❚❚';$('bMute').textContent=(p.muted||p.volume===0)?'🔇':'🔊'}
+function skip(sec){if(!p.duration)return;p.currentTime=Math.min(Math.max(0,p.currentTime+sec),p.duration);ui();wake()}
+function toggle(){if(p.paused)p.play().catch(()=>{});else p.pause()}
+function wake(){stage.classList.remove('idle');clearTimeout(idleT);if(!p.paused)idleT=setTimeout(()=>stage.classList.add('idle'),3000)}
+['timeupdate','loadedmetadata','durationchange','play','pause','volumechange','ended','emptied'].forEach(e=>p.addEventListener(e,()=>{ui();if(e==='play'||e==='pause')wake()}));
+seek.addEventListener('input',()=>{dragging=true;if(p.duration)p.currentTime=seek.value/1000*p.duration;ui()});
+seek.addEventListener('change',()=>{dragging=false;ui()});
+$('bBack').onclick=()=>skip(-10);$('bFwd').onclick=()=>skip(10);$('bPlay').onclick=()=>{toggle();wake()};
+$('bMute').onclick=()=>{p.muted=!p.muted;if(!p.muted&&p.volume===0)p.volume=1;ui();wake()};
+$('bFs').onclick=()=>{const fs=document.fullscreenElement||document.webkitFullscreenElement;if(fs){(document.exitFullscreen||document.webkitExitFullscreen).call(document)}else if(stage.requestFullscreen)stage.requestFullscreen().catch(()=>{});else if(stage.webkitRequestFullscreen)stage.webkitRequestFullscreen();else if(p.webkitEnterFullscreen)p.webkitEnterFullscreen()};
+p.addEventListener('click',()=>{if(stage.classList.contains('idle')){wake()}else{toggle();wake()}});
+['mousemove','touchstart'].forEach(e=>stage.addEventListener(e,wake,{passive:true}));
+document.addEventListener('keydown',e=>{if($('watchView').hidden||/INPUT|TEXTAREA/.test(document.activeElement.tagName)&&document.activeElement!==seek)return;
+ if(e.key==='ArrowLeft'){e.preventDefault();skip(-10)}else if(e.key==='ArrowRight'){e.preventDefault();skip(10)}
+ else if(e.key==='m'||e.key==='M'){p.muted=!p.muted;ui()}else if(e.key===' '&&document.activeElement.tagName!=='BUTTON'){e.preventDefault();toggle()}});
+ui();
+})();
+</script>
+</body></html>
